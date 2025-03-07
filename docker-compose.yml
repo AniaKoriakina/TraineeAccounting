@@ -1,0 +1,13 @@
+version: '3'
+services:
+  postgres:
+    image: postgres:15
+    container_name: trainee_dev
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 7825
+      POSTGRES_DB: trainee
+    volumes:
+      - C:\wiki\data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"

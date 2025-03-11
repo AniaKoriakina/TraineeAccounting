@@ -14,7 +14,7 @@ public class TraineeDto
 
     public string Email { get; set; }
     
-    public string PhoneNumber { get; set; }
+    public string? PhoneNumber { get; set; }
 
     public DateOnly DateOfBirth { get; set; }
 

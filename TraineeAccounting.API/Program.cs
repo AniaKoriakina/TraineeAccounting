@@ -25,13 +25,26 @@ builder.Services.AddScoped<ITraineeRepository, TraineeRepository>();
 builder.Services.AddScoped<ITraineeshipRepository, TraineeshipRepository>();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<IValidator<CreateTraineeCommand>, CreateTraineeValidator>();
+builder.Services.AddScoped<IValidator<UpdateTraineeCommand>, UpdateTraineeValidator>();
+builder.Services.AddScoped<IValidator<UpdateTraineeshipTraineesCommand>, UpdateTraineeshipTraineesValidator>();
+builder.Services.AddScoped<IValidator<UpdateProjectTraineesCommand>, UpdateProjectTraineesValidator>();
+builder.Services.AddScoped<IValidator<CreateTraineeshipCommand>, CreateTraineeshipValidator>();
+builder.Services.AddScoped<IValidator<CreateProjectCommand>, CreateProjectValidator>();
 
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(CreateTraineeHandler).Assembly));
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(UpdateTraineeHandler).Assembly));
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DeleteTraineeHandler).Assembly));
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DeleteTraineeshipHandler).Assembly));
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DeleteProjectHandler).Assembly));
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(UpdateTraineeshipTraineesHandler).Assembly));
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(UpdateProjectTraineesHandler).Assembly));
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(CreateTraineeshipHandler).Assembly));
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(CreateProjectCommand).Assembly));
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy => 
-        policy.AllowAnyOrigin()
+        policy.WithOrigins("http://localhost:5229")
             .AllowAnyMethod()
             .AllowAnyHeader());
 });

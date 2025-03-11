@@ -14,11 +14,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Models\" />
-      <Folder Include="Services\" />
-    </ItemGroup>
-
-    <ItemGroup>
       <ProjectReference Include="..\TraineeAccounting.Application\TraineeAccounting.Application.csproj" />
       <ProjectReference Include="..\TraineeAccounting.Infrastructure\TraineeAccounting.Infrastructure.csproj" />
     </ItemGroup>

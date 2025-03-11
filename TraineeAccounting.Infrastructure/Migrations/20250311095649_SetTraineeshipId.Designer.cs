@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TraineeAccounting.Infrastructure.Data;
@@ -11,9 +12,11 @@ using TraineeAccounting.Infrastructure.Data;
 namespace TraineeAccounting.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250311095649_SetTraineeshipId")]
+    partial class SetTraineeshipId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -69,12 +72,10 @@ namespace TraineeAccounting.Infrastructure.Migrations
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("text");
 
-                    b.Property<int?>("ProjectId")
-                        .IsRequired()
+                    b.Property<int>("ProjectId")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("TraineeshipId")
-                        .IsRequired()
+                    b.Property<int>("TraineeshipId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -108,13 +109,13 @@ namespace TraineeAccounting.Infrastructure.Migrations
                     b.HasOne("TraineeAccounting.Domain.Entities.Project", "Project")
                         .WithMany()
                         .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.SetNull)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("TraineeAccounting.Domain.Entities.Traineeship", "Traineeship")
                         .WithMany()
                         .HasForeignKey("TraineeshipId")
-                        .OnDelete(DeleteBehavior.SetNull)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Project");

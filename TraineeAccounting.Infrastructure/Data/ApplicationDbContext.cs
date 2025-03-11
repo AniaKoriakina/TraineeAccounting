@@ -16,4 +16,21 @@ public class ApplicationDbContext : DbContext
             optionsBuilder.UseNpgsql("Host=localhost;Database=trainee;Username=postgres;Password=7825;");
         }
     }
+    
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+        
+        modelBuilder.Entity<Trainee>()
+            .HasOne(t => t.Traineeship)
+            .WithMany()
+            .HasForeignKey(t => t.TraineeshipId)
+            .OnDelete(DeleteBehavior.SetNull); 
+        
+        modelBuilder.Entity<Trainee>()
+            .HasOne(t => t.Project)
+            .WithMany()
+            .HasForeignKey(t => t.ProjectId)
+            .OnDelete(DeleteBehavior.SetNull);
+    }
 }

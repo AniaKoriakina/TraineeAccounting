@@ -59,7 +59,7 @@ public class CreateTraineeHandler : IRequestHandler<CreateTraineeCommand, int>
             request.LastName,
             request.Gender,
             request.Email,
-            request.PhoneNumber,
+            request?.PhoneNumber,
             request.DateOfBirth,
             traineeship,
             project

@@ -8,9 +8,12 @@ public interface ITraineeRepository
     Task<IEnumerable<Trainee>> GetTraineesAsync();
     Task AddAsync(Trainee trainee);
     
-    Task DeleteAsync(Trainee trainee);
+    Task<bool> DeleteAsync(Trainee trainee);
+    
+    Task UpdateAsync(Trainee trainee);
     
     Task<bool> IsEmailExistsAsync(string email);
     
     Task<bool> IsPhoneNumberExistAsync(string phone);
+    Task<bool> AreTraineesExist(List<int> traineeIds);
 }

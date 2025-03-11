@@ -15,12 +15,18 @@ public class TraineeController :ControllerBase
     private readonly IMediator _mediator;
     public readonly ITraineeRepository _traineeRepository;
     public readonly IValidator<CreateTraineeCommand> _traineeValidator;
+    public readonly IValidator<UpdateTraineeCommand> _updateTraineeValidator;
 
-    public TraineeController(IMediator mediator, IValidator<CreateTraineeCommand> traineeValidator, ITraineeRepository traineeRepository)
+    public TraineeController(
+        IMediator mediator, 
+        IValidator<CreateTraineeCommand> traineeValidator, 
+        IValidator<UpdateTraineeCommand> updateTraineeValidator, 
+        ITraineeRepository traineeRepository)
     {
         _mediator = mediator;
         _traineeValidator = traineeValidator;
         _traineeRepository = traineeRepository;
+        _updateTraineeValidator = updateTraineeValidator;
     }
     
     [HttpGet]
@@ -49,5 +55,28 @@ public class TraineeController :ControllerBase
         var traineeId = await _mediator.Send(command);
         return CreatedAtAction(nameof(GetById), new { id = traineeId }, traineeId);
         
+    }
+
+    [HttpPut("{id}")]
+    public async Task<ActionResult> Update(int id, [FromBody] UpdateTraineeCommand command)
+    {
+        ValidationResult validationResult = _updateTraineeValidator.Validate(command);
+        if (!validationResult.IsValid)
+        {
+            return BadRequest(validationResult.Errors
+                .Select(error => new { error.PropertyName, error.ErrorMessage })
+                .ToList());
+        }
+
+        var trainee = await _mediator.Send(command);
+        return Ok(trainee);
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<ActionResult> Delete(int id)
+    {
+        var request = new DeleteTraineeCommand { TraineeId = id };
+        var result = await _mediator.Send(request);
+        return Ok(result);
     }
 }

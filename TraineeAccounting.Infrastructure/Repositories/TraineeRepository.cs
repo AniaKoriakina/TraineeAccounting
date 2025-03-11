@@ -41,10 +41,29 @@ public class TraineeRepository : ITraineeRepository
         await _context.SaveChangesAsync();
     }
 
-    public async Task DeleteAsync(Trainee trainee)
+    public async Task<bool> DeleteAsync(Trainee trainee)
     {
         _context.Trainees.Remove(trainee);
         await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task UpdateAsync(Trainee trainee)
+    {
+        _context.Trainees.Update(trainee);
+        await _context.SaveChangesAsync();
+    }
+    
+    public async Task<bool> AreTraineesExist(List<int> traineeIds)
+    {
+        if (traineeIds == null || traineeIds.Count == 0) return false;
+
+        var existingIds = await _context.Trainees
+            .Where(t => traineeIds.Contains(t.Id))
+            .Select(t => t.Id)
+            .ToListAsync();
+
+        return existingIds.Count == traineeIds.Count;
     }
     
 }

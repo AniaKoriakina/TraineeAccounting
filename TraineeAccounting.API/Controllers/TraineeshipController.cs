@@ -7,6 +7,7 @@ using TraineeAccounting.Application.Commands;
 using TraineeAccounting.Application.Dtos;
 using TraineeAccounting.Domain.Entities;
 using TraineeAccounting.Domain.Interfaces;
+using TraineeAccounting.Domain.Models;
 
 namespace TraineeAccounting.Controllers;
 
@@ -44,10 +45,22 @@ public class TraineeshipController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<TraineeshipDto>>> GetTraineeships()
+    public async Task<ActionResult<TraineeshipDto>> GetTraineeships([FromQuery] SearchAndSortRequest request, CancellationToken cancellationToken)
     {
-        var traineeships = await _traineeshipRepository.GetAllAsync();
-        return Ok(traineeships.Select(x => new TraineeshipDto {Id = x.TraineeshipId, Name = x.Name}));
+        var traineeships = await _traineeshipRepository.GetPaginatedAsync(request, cancellationToken);
+        var dtos = traineeships.Items.Select(x => new TraineeshipDto
+        {
+            Id = x.TraineeshipId, 
+            Name = x.Name,
+            TraineeCount = x.Trainees.Count
+        }).ToList();
+        return Ok(new PagedResult<TraineeshipDto>
+        {
+            Items = dtos,
+            TotalCount = traineeships.TotalCount,
+            PageSize = request.PageSize,
+            PageIndex = request.PageIndex
+        });
     }
 
     [HttpDelete("{id}")]

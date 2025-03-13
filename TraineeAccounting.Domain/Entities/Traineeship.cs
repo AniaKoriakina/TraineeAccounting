@@ -5,6 +5,8 @@ public class Traineeship
     public int TraineeshipId { get; set; }
     public string Name { get; set; }
     
+    public ICollection<Trainee> Trainees { get; set; } = new HashSet<Trainee>();
+    
     protected Traineeship() { }
 
     public Traineeship(string traineeshipName)

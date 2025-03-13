@@ -23,13 +23,13 @@ public class ApplicationDbContext : DbContext
         
         modelBuilder.Entity<Trainee>()
             .HasOne(t => t.Traineeship)
-            .WithMany()
+            .WithMany(ts => ts.Trainees)
             .HasForeignKey(t => t.TraineeshipId)
             .OnDelete(DeleteBehavior.SetNull); 
         
         modelBuilder.Entity<Trainee>()
             .HasOne(t => t.Project)
-            .WithMany()
+            .WithMany(ps => ps.Trainees)
             .HasForeignKey(t => t.ProjectId)
             .OnDelete(DeleteBehavior.SetNull);
     }

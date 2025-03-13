@@ -18,7 +18,9 @@ public class TraineeDto
 
     public DateOnly DateOfBirth { get; set; }
 
-    public Traineeship Traineeship { get; set; }
-
-    public Project Project { get; set; }
+    public int TraineeshipId { get; set; }
+    public string TraineeshipName { get; set; }
+    
+    public int ProjectId { get; set; }
+    public string ProjectName { get; set; }
 }

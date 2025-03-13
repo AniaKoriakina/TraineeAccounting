@@ -1,4 +1,5 @@
 using TraineeAccounting.Domain.Entities;
+using TraineeAccounting.Domain.Models;
 
 namespace TraineeAccounting.Domain.Interfaces;
 
@@ -16,4 +17,5 @@ public interface ITraineeRepository
     
     Task<bool> IsPhoneNumberExistAsync(string phone);
     Task<bool> AreTraineesExist(List<int> traineeIds);
+    Task<PagedResult<Trainee>> GetPaginatedAsync(SearchAndSortRequest request, CancellationToken cancellationToken);
 }

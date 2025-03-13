@@ -3,8 +3,10 @@ using FluentValidation.Results;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using TraineeAccounting.Application.Commands;
+using TraineeAccounting.Application.Dtos;
 using TraineeAccounting.Domain.Entities;
 using TraineeAccounting.Domain.Interfaces;
+using TraineeAccounting.Domain.Models;
 
 namespace TraineeAccounting.Controllers;
 
@@ -30,10 +32,30 @@ public class TraineeController :ControllerBase
     }
     
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Trainee>>> GetAllTrainees()
+    public async Task<ActionResult<IEnumerable<TraineeDto>>> GetAllTrainees([FromQuery] SearchAndSortRequest request, CancellationToken cancellationToken)
     {
-        var trainees = await _traineeRepository.GetTraineesAsync();
-        return Ok(trainees);
+        var trainees = await _traineeRepository.GetPaginatedAsync(request, cancellationToken);
+        var dtos = trainees.Items.Select(x => new TraineeDto
+        {
+            TraineeId = x.Id,
+            FirstName = x.FirstName,
+            LastName = x.LastName,
+            Gender = x.Gender,
+            Email = x.Email,
+            PhoneNumber = x.PhoneNumber,
+            DateOfBirth = x.DateOfBirth,
+            ProjectId = x.Project.ProjectId,
+            ProjectName = x.Project?.Name,
+            TraineeshipId = x.Traineeship.TraineeshipId,
+            TraineeshipName = x.Traineeship?.Name,
+        }).ToList();
+        return Ok(new PagedResult<TraineeDto>
+        {
+            Items = dtos,
+            TotalCount = trainees.TotalCount,
+            PageSize = request.PageSize,
+            PageIndex = request.PageIndex,
+        });
     }
 
     [HttpGet("{id}")]

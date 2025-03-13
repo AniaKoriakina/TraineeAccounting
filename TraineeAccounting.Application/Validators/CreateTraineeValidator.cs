@@ -47,6 +47,10 @@ public class CreateTraineeValidator : AbstractValidator<CreateTraineeCommand>
     
     private async Task<bool> BeUniquePhone(string phone, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrEmpty(phone))
+        {
+            return true; 
+        }
         return !(await _traineeRepository.IsPhoneNumberExistAsync(phone));
     }
 }

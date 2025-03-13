@@ -50,7 +50,7 @@ public class Trainee
         LastName = lastName;
         Gender = gender;
         Email = email;
-        PhoneNumber = phoneNumber;
+        PhoneNumber = phoneNumber ?? PhoneNumber;
         DateOfBirth = dateOfBirth;
         Traineeship = traineeship ?? throw new ArgumentNullException(nameof(traineeship));
         Project = project ?? throw new ArgumentNullException(nameof(project));

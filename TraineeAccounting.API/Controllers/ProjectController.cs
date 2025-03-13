@@ -5,6 +5,7 @@ using TraineeAccounting.Application.Commands;
 using TraineeAccounting.Application.Dtos;
 using TraineeAccounting.Domain.Entities;
 using TraineeAccounting.Domain.Interfaces;
+using TraineeAccounting.Domain.Models;
 
 namespace TraineeAccounting.Controllers;
 
@@ -29,11 +30,30 @@ public class ProjectController : ControllerBase
         _createProjectValidator = createProjectValidator;
     }
 
+    // [HttpGet]
+    // public async Task<ActionResult<IEnumerable<ProjectDto>>> GetProjects()
+    // {
+    //     var projects = await _projectRepository.GetAllAsync();
+    //     return Ok(projects.Select(x => new ProjectDto { Id = x.ProjectId, Name = x.Name }));
+    // }
+    
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ProjectDto>>> GetProjects()
+    public async Task<ActionResult<ProjectDto>> GetProjects([FromQuery] SearchAndSortRequest request, CancellationToken cancellationToken)
     {
-        var projects = await _projectRepository.GetAllAsync();
-        return Ok(projects.Select(x => new ProjectDto { Id = x.ProjectId, Name = x.Name }));
+        var projects = await _projectRepository.GetPaginatedAsync(request, cancellationToken);
+        var dtos = projects.Items.Select(x => new ProjectDto
+        {
+            Id = x.ProjectId, 
+            Name = x.Name,
+            TraineeCount = x.Trainees.Count
+        }).ToList();
+        return Ok(new PagedResult<ProjectDto>
+        {
+            Items = dtos,
+            TotalCount = projects.TotalCount,
+            PageSize = request.PageSize,
+            PageIndex = request.PageIndex
+        });
     }
 
     [HttpDelete("{id}")]

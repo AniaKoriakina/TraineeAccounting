@@ -59,10 +59,25 @@ public class TraineeController :ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Trainee>> GetById(int id)
+    public async Task<ActionResult<TraineeDto>> GetById(int id)
     {
-        var trainee = await _traineeRepository.GetByIdAsync(id);
-        return Ok(trainee);
+        var trainees = await _traineeRepository.GetByIdAsync(id);
+        if (trainees == null) return NotFound();
+        var dtos = new TraineeDto
+        {
+            TraineeId = trainees.Id,
+            FirstName = trainees.FirstName,
+            LastName = trainees.LastName,
+            Gender = trainees.Gender,
+            Email = trainees.Email,
+            PhoneNumber = trainees.PhoneNumber,
+            DateOfBirth = trainees.DateOfBirth,
+            ProjectId = trainees.Project.ProjectId,
+            ProjectName = trainees.Project?.Name,
+            TraineeshipId = trainees.Traineeship.TraineeshipId,
+            TraineeshipName = trainees.Traineeship?.Name,
+        };
+        return Ok(dtos);
     }
 
     [HttpPost]

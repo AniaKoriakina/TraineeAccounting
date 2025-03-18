@@ -1,0 +1,177 @@
+﻿@page "/trainee-create"
+@using TraineeAccounting.Client.Models
+@using TraineeAccounting.Client.Requests
+@using TraineeAccounting.Client.Response
+@inject HttpClient Client
+
+<PageTitle>Создание стажёра</PageTitle>
+
+<div class="form-container">
+    <h3>Создание нового стажера</h3>
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="success-message">@successMessage</div>
+    }
+
+    <EditForm Model="newTrainee" OnValidSubmit="CreateTraineeAsync">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="form-group">
+            <label for="firstName">Имя:</label>
+            <InputText id="firstName" @bind-Value="newTrainee.FirstName" autocomplete="given-name" />
+            <ValidationMessage For="() => newTrainee.FirstName" />
+            @if (serverErrors.ContainsKey("FirstName"))
+            {
+                <div class="error-message">@serverErrors["FirstName"]</div>
+            }
+        </div>
+
+        <div class="form-group">
+            <label for="lastName">Фамилия:</label>
+            <InputText id="lastName" @bind-Value="newTrainee.LastName" autocomplete="family-name" />
+            <ValidationMessage For="() => newTrainee.LastName" />
+            @if (serverErrors.ContainsKey("LastName"))
+            {
+                <div class="error-message">@serverErrors["LastName"]</div>
+            }
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <InputText id="email" type="email" @bind-Value="newTrainee.Email" autocomplete="email" />
+            <ValidationMessage For="() => newTrainee.Email" />
+            @if (serverErrors.ContainsKey("Email"))
+            {
+                <div class="error-message">@serverErrors["Email"]</div>
+            }
+        </div>
+
+        <div class="form-group">
+            <label for="phoneNumber">Телефон:</label>
+            <InputText id="phoneNumber" @bind-Value="newTrainee.PhoneNumber" autocomplete="tel" />
+            <ValidationMessage For="() => newTrainee.PhoneNumber" />
+            @if (serverErrors.ContainsKey("PhoneNumber"))
+            {
+                <div class="error-message">@serverErrors["PhoneNumber"]</div>
+            }
+        </div>
+
+        <div class="form-group">
+            <label for="dateOfBirth">Дата рождения:</label>
+            <InputDate id="dateOfBirth" @bind-Value="newTrainee.DateOfBirth" />
+            <ValidationMessage For="() => newTrainee.DateOfBirth" />
+            @if (serverErrors.ContainsKey("DateOfBirth"))
+            {
+                <div class="error-message">@serverErrors["DateOfBirth"]</div>
+            }
+        </div>
+
+        <div class="form-group">
+            <label for="gender">Пол:</label>
+            <select id="gender" @bind="newTrainee.Gender">
+                <option value="">-- Выберите пол --</option>
+                <option value="Мужской">Мужской</option>
+                <option value="Женский">Женский</option>
+            </select>
+            <ValidationMessage For="() => newTrainee.Gender" />
+        </div>
+
+        <div class="form-group">
+            <label for="project">Проект:</label>
+            <input id="project" list="projects-list" @bind="newTrainee.ProjectName" placeholder="Введите или выберите проект" />
+            <datalist id="projects-list">
+                @if (projects?.Items != null)
+                {
+                    @foreach (var project in projects.Items)
+                    {
+                        <option value="@project.Name">@project.Name</option>
+                    }
+                }
+            </datalist>
+        </div>
+
+        <div class="form-group">
+            <label for="traineeship">Стажировка:</label>
+            <input id="traineeship" list="traineeship-list" @bind="newTrainee.TraineeshipName" placeholder="Введите или выберите стажировку" />
+            <datalist id="traineeship-list">
+                @if (traineeships?.Items != null)
+                {
+                    @foreach (var traineeship in traineeships.Items)
+                    {
+                        <option value="@traineeship.Name">@traineeship.Name</option>
+                    }
+                }
+            </datalist>
+        </div>
+
+        <button type="submit" disabled="@isSubmitting">
+            @if (isSubmitting)
+            {
+                <span>Создание...</span>
+            }
+            else
+            {
+                <span>Создать</span>
+            }
+        </button>
+    </EditForm>
+</div>
+
+@code {
+    private TraineeDto newTrainee = new();
+    private PagedResult<ProjectDto>? projects;
+    private PagedResult<TraineeshipDto>? traineeships;
+    
+    private Dictionary<string, string> serverErrors = new();
+    private string successMessage = "";
+    private bool isSubmitting = false;
+
+    protected override async Task OnInitializedAsync() 
+    {
+        var queryProjects = "api/Project";
+        var queryTraineeships = "api/Traineeship";
+
+        projects = await Client.GetFromJsonAsync<PagedResult<ProjectDto>>(queryProjects);
+        traineeships = await Client.GetFromJsonAsync<PagedResult<TraineeshipDto>>(queryTraineeships);
+    }
+
+    private async Task CreateTraineeAsync()
+    {
+        try
+        {
+            isSubmitting = true;
+            serverErrors.Clear();
+            
+            var response = await Client.PostAsJsonAsync("api/Trainees", newTrainee);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                newTrainee = new();
+                successMessage = "Стажер успешно создан!";
+                await Task.Delay(3000);
+                successMessage = "";
+            }
+            else
+            {
+                var errors = await response.Content.ReadFromJsonAsync<List<FormattedMessageError>>();
+                foreach (var error in errors)
+                {
+                    serverErrors[error.PropertyName] = error.ErrorMessage;
+                }
+            }
+
+            isSubmitting = false;
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Ошибка при создании стажера: {ex.Message}");
+            successMessage = "Ошибка при создании стажера.";
+            await Task.Delay(3000); 
+            successMessage = "";
+
+            isSubmitting = false;
+        }
+    }
+}

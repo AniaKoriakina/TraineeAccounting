@@ -1,0 +1,314 @@
+@page "/trainees"
+@using System.Text.Json
+@using TraineeAccounting.Client.Models
+@using TraineeAccounting.Client.Requests
+@inject IJSRuntime JsRuntime
+@inject HttpClient Client
+
+<h3>Список стажеров</h3>
+
+<div class="filters">
+    <input class="search" type="text" @bind="searchRequest.Search" placeholder="Поиск..." @bind:event="oninput" @bind:after="LoadDataAsync" />
+    <label>Сортировка</label>
+    <select class="sort" @bind="searchRequest.Sort" @bind:after="LoadDataAsync">
+        <option value="lastname">По фамилии</option>
+        <option value="firstname">По имени</option>
+        <option value="email">По email</option>
+        <option value="traineeshipname">По названию стажровки</option>
+        <option value="projectname">По названию проекта</option>
+    </select>
+    <label>Сортировка</label>
+    <select class="selected" @bind="selectedSortDirection" @bind:after="LoadDataAsync">
+        <option value="true">По возрастанию</option>
+        <option value="false">По убыванию</option>
+    </select>
+</div>
+
+<div class="pagination">
+    <button @onclick="GoToPreviousPage" disabled="@(searchRequest.PageIndex == 1)">Назад</button>
+    @if (trainees != null)
+    {
+        @for (int i = Math.Max(1, searchRequest.PageIndex - 2); i <= Math.Min(trainees.TotalPages, searchRequest.PageIndex + 2); i++)
+        {
+            <button @onclick="() => GoToPage(i)" class="@(i == searchRequest.PageIndex ? "active" : "")">@i</button>
+        }
+    }
+    <button @onclick="GoToNextPage" disabled="@(searchRequest.PageIndex >= trainees.TotalPages)">Вперед</button>
+</div>
+
+<div class="pagination-info">
+    Страница @searchRequest.PageIndex из @(trainees?.TotalPages ?? 1)
+</div>
+
+@if (trainees == null)
+{
+    <p>Загрузка...</p>
+}
+else if (!trainees.Items.Any())
+{
+    <p>Нет данных</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Id</th>
+            <th>Имя</th>
+            <th>Фамилия</th>
+            <th>Пол</th>
+            <th>Email</th>
+            <th>Телефон</th>
+            <th>Дата рождения</th>
+            <th>Стажировка</th>
+            <th>Проект</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var trainee in trainees.Items)
+        {
+            <tr>
+                <td>@trainee.TraineeId</td>
+                <td>@trainee.FirstName</td>
+                <td>@trainee.LastName</td>
+                <td>@trainee.Gender</td>
+                <td>@trainee.Email</td>
+                <td>@trainee.PhoneNumber</td>
+                <td>@trainee.DateOfBirth.ToString("d")</td>
+                <td>@trainee.TraineeshipName</td>
+                <td>@trainee.ProjectName</td>
+                <td>
+                    <button @onclick="() => OpenEditModal(trainee)">✏️ Редактировать</button>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+@if (isSidebarOpen && editTrainee != null)
+{
+    <div class="sidebar">
+        <h4>Редактировать стажера</h4>
+        <EditForm Model="editTrainee" OnValidSubmit="SaveChangesAsync">
+            <DataAnnotationsValidator />
+            <p>
+                <label for="firstName">Имя:</label>
+                <InputText id="firstName" @bind-Value="editTrainee.FirstName" autocomplete="given-name" />
+                <ValidationMessage For="() => editTrainee.FirstName" />
+            </p>
+            <p>
+                <label for="lastName">Фамилия:</label>
+                <InputText id="lastName" @bind-Value="editTrainee.LastName" autocomplete="family-name" />
+                <ValidationMessage For="() => editTrainee.LastName" />
+            </p>
+            <p>
+                <label for="email">Email:</label>
+                <InputText id="email" type="email" @bind-Value="editTrainee.Email" autocomplete="email" />
+                <ValidationMessage For="() => editTrainee.Email" />
+            </p>
+            <p>
+                <label for="phoneNumber">Телефон:</label>
+                <InputText id="phoneNumber" @bind-Value="editTrainee.PhoneNumber" autocomplete="tel" />
+                <ValidationMessage For="() => editTrainee.PhoneNumber" />
+            </p>
+            <p>
+                <label for="dateOfBirth">Дата рождения:</label>
+                <InputDate id="dateOfBirth" @bind-Value="editTrainee.DateOfBirth" TValue="DateOnly" />
+                <ValidationMessage For="() => editTrainee.DateOfBirth" />
+            </p>
+            <p>
+                <label for="gender">Пол:</label>
+                <select id="gender" @bind="editTrainee.Gender">
+                    <option value="">-- Выберите пол --</option>
+                    <option value="Мужской">Мужской</option>
+                    <option value="Женский">Женский</option>
+                </select>
+                <ValidationMessage For="() => editTrainee.Gender" />
+            </p>
+            <p>
+                <label for="project">Проект:</label>
+                <input id="project" list="projects-list" @bind="editTrainee.ProjectName" placeholder="Введите или выберите проект" />
+                <datalist id="projects-list">
+                    @if (projects?.Items != null)
+                    {
+                        @foreach (var project in projects.Items)
+                        {
+                            <option value="@project.Name">@project.Name</option>
+                        }
+                    }
+                </datalist>
+            </p>
+            <p>
+                <label for="traineeship">Стажировка:</label>
+                <input id="traineeship" list="traineeship-list" @bind="editTrainee.TraineeshipName" placeholder="Введите или выберите стажировку" />
+                <datalist id="traineeship-list">
+                    @if (traineeships?.Items != null)
+                    {
+                        @foreach (var traineeship in traineeships.Items)
+                        {
+                            <option value="@traineeship.Name">@traineeship.Name</option>
+                        }
+                    }
+                </datalist>
+            </p>
+            <button type="submit">Сохранить</button>
+            <button type="button" @onclick="CloseEditModal">Отмена</button>
+            <button type="button" class="delete-button" @onclick="DeleteTrainee">Удалить</button>
+        </EditForm>
+    </div>
+}
+
+@code {
+    private PagedResult<TraineeDto>? trainees;
+    private PagedResult<ProjectDto>? projects;
+    private PagedResult<TraineeshipDto>? traineeships;
+    private SearchAndSortRequest searchRequest = new();
+    private const int FixedPageSize = 10;
+    private string selectedSortDirection = "true";
+    private TraineeDto? editTrainee = null;
+    private bool isSidebarOpen = false; 
+
+    protected override async Task OnInitializedAsync()
+    {
+        searchRequest.PageSize = FixedPageSize;
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            searchRequest.SortDirection = bool.Parse(selectedSortDirection);
+            var queryString = $"api/Trainees?PageIndex={searchRequest.PageIndex}" +
+                              $"&PageSize={FixedPageSize}" +
+                              $"&Search={Uri.EscapeDataString(searchRequest.Search)}" +
+                              $"&Sort={searchRequest.Sort}" +
+                              $"&SortDirection={searchRequest.SortDirection}";
+            var queryProjects = $"api/Project";
+            var queryTraineeships = $"api/Traineeship";
+            trainees = await Client.GetFromJsonAsync<PagedResult<TraineeDto>>(queryString);
+            projects = await Client.GetFromJsonAsync<PagedResult<ProjectDto>>(queryProjects);
+            traineeships = await Client.GetFromJsonAsync<PagedResult<TraineeshipDto>>(queryTraineeships);
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Ошибка подключения: {ex.Message}");
+        }
+        catch (JsonException ex)
+        {
+            Console.WriteLine($"Ошибка данных: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Неизвестная ошибка: {ex.Message}");
+        }
+    }
+
+    private async Task GoToPage(int page)
+    {
+        if (page < 1 || (trainees != null && page > trainees.TotalPages))
+        {
+            return;
+        }
+        searchRequest.PageIndex = page;
+        await LoadDataAsync();
+    }
+
+    private async Task GoToPreviousPage()
+    {
+        if (searchRequest.PageIndex > 1)
+        {
+            searchRequest.PageIndex--;
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task GoToNextPage()
+    {
+        if (trainees != null && searchRequest.PageIndex < trainees.TotalPages)
+        {
+            searchRequest.PageIndex++;
+            await LoadDataAsync();
+        }
+    }
+
+    private void OpenEditModal(TraineeDto trainee)
+    {
+        editTrainee = new TraineeDto
+        {
+            TraineeId = trainee.TraineeId,
+            FirstName = trainee.FirstName,
+            LastName = trainee.LastName,
+            Email = trainee.Email,
+            PhoneNumber = trainee.PhoneNumber,
+            Gender = trainee.Gender,
+            DateOfBirth = trainee.DateOfBirth,
+            TraineeshipName = trainee.TraineeshipName,
+            ProjectName = trainee.ProjectName
+        };
+        isSidebarOpen = true;
+        StateHasChanged();
+    }
+
+    private void CloseEditModal()
+    {
+        editTrainee = null;
+        isSidebarOpen = false;
+        StateHasChanged();
+    }
+
+    private async Task SaveChangesAsync()
+    {
+        if (editTrainee == null)
+        {
+            return;
+        }
+        try
+        {
+            var url = $"api/Trainees/{editTrainee.TraineeId}";
+            await Client.PutAsJsonAsync(url, editTrainee);
+            await LoadDataAsync();
+            CloseEditModal();
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Ошибка при отправке PUT-запроса: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Неизвестная ошибка: {ex.Message}");
+        }
+    }
+    
+    private async Task DeleteTrainee()
+    {
+        if (editTrainee == null)
+        {
+            return;
+        }
+        
+        bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Вы уверены, что хотите удалить этого стажера?");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        try
+        {
+            var url = $"api/Trainees/{editTrainee.TraineeId}";
+            await Client.DeleteAsync(url);
+            await LoadDataAsync();
+            CloseEditModal();
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Ошибка при удалении стажера: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Неизвестная ошибка: {ex.Message}");
+        }
+    }
+}

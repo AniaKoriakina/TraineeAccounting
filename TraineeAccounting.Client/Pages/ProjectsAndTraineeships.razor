@@ -1,0 +1,900 @@
+﻿@page "/traineeships-and-projects"
+@using System.Text.Json
+@using TraineeAccounting.Client.Models
+@using TraineeAccounting.Client.Requests
+@using Microsoft.AspNetCore.WebUtilities;
+@using TraineeAccounting.Client.Response
+@using TraineeAccounting.Client.Services
+@inject ApiService ApiService
+@inject HttpClient Client
+@inject NavigationManager NavigationManager
+
+<PageTitle>Стажировки и проекты</PageTitle>
+
+<div class="tab-bar">
+    <button class="tab-button @(activeTab == "Traineeships" ? "active" : "")" @onclick="() => SwitchTab(Traineeships)">Стажировки</button>
+    <button class="tab-button @(activeTab == "Projects" ? "active" : "")" @onclick="() => SwitchTab(Projects)">Проекты</button>
+</div>
+
+@if (activeTab == "Traineeships")
+{
+    <h3>Стажировки</h3>
+    <div class="filters">
+        <input class="search" type="text"
+               value="@traineeshipSearchRequest.Search"
+               placeholder="Поиск..."
+               @oninput="e => OnSearchTraineeshipInput(e.Value.ToString())" />
+        <select class="sort"
+                value="@traineeshipSearchRequest.Sort"
+                @onchange="e => OnSortTraineeshipChange(e.Value.ToString())">
+            <option value="name">По названию</option>
+            <option value="trainee_count">По количеству стажеров</option>
+        </select>
+        <select class="selected"
+                value="@traineeshipSearchRequest.SortDirection.ToString().ToLower()"
+                @onchange="e => OnSortTraineeshipDirectionChange(bool.Parse(e.Value.ToString()))">>
+            <option value="true">По возрастанию</option>
+            <option value="false">По убыванию</option>
+        </select>
+        <label>
+            Номер страницы:
+            <input type="number"
+                   @bind="traineeshipSearchRequest.PageIndex"
+                   @oninput="e => OnPageTraineeshipIndexChange(int.Parse(e.Value.ToString()))" 
+                   min="1"
+                   max="@(traineeships?.TotalPages ?? 1)" />
+        </label>
+
+        <label>
+            Размер страницы:
+            <input type="number"
+                   @bind="traineeshipSearchRequest.PageSize"
+                   @oninput="e => OnPageTraineeshipSizeChange(int.Parse(e.Value.ToString()))"
+                   min="1"
+                   max="50" />
+        </label>
+    </div>
+
+    <div class="pagination">
+        <button @onclick="GoToPreviousTraineeshipPage" disabled="@(traineeshipSearchRequest.PageIndex == 1)">Назад</button>
+        @if (traineeships != null)
+        {
+            @for (int i = Math.Max(1, traineeshipSearchRequest.PageIndex - 2); i <= Math.Min(traineeships.TotalPages, traineeshipSearchRequest.PageIndex + 2); i++)
+            {
+                <button @onclick="() => GoToTraineeshipPage(i)" class="@(i == traineeshipSearchRequest.PageIndex ? "active" : "")">@i</button>
+            }
+        }
+        <button @onclick="GoToNextTraineeshipPage" disabled="@(traineeshipSearchRequest.PageIndex >= traineeships.TotalPages)">Вперед</button>
+    </div>
+
+    <div class="pagination-info">
+        Страница @traineeshipSearchRequest.PageIndex из @(traineeships?.TotalPages ?? 1)
+    </div>
+
+    @if (traineeships == null)
+    {
+        <p>Загрузка...</p>
+    }
+    else if (!traineeships.Items.Any())
+    {
+        <p>Нет данных</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Название</th>
+                <th>Количество стажеров</th>
+                <th>Действия</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var traineeship in traineeships.Items)
+            {
+                <tr>
+                    <td>@traineeship.Name</td>
+                    <td>@traineeship.TraineeCount</td>
+                    <td>
+                        @if (traineeship.TraineeCount > 0)
+                        {
+                            <span class="view-button"
+                                  @onclick="() => OpenTraineesModal(traineeship.Id, traineeship.Name)">
+                                Просмотреть стажёров
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="view-button disabled">Просмотреть стажёров</span> 
+                        }
+                        <span class="edit-button" @onclick="() => OpenEditSidebar(traineeship)">
+                            Редактировать
+                        </span>
+                        <span class="delete-button" @onclick="() => DeleteItem(traineeship.Id, true)">
+                            Удалить
+                        </span>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        <p>@if (!string.IsNullOrEmpty(deleteErrorMessage))
+           {
+               <div class="error-message">
+                   @deleteErrorMessage
+               </div>
+           }
+        </p>
+    }
+    <EditForm Model="newTraineeship" OnValidSubmit="AddNewTraineeshipAsync">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div>
+            <input type="text" class="mb-3" @bind="newTraineeship.Name" placeholder="Название стажировки" />
+            <ValidationMessage For="() => newTraineeship.Name" />
+        </div>
+
+        <button type="submit">Добавить стажировку</button>
+    </EditForm>
+
+    @if (errorsTraineeship != null && errorsTraineeship.Any())
+    {
+        <div class="error-messages">
+            @foreach (var error in errorsTraineeship)
+            {
+                <div class="error-message">
+                    <strong>@error.PropertyName:</strong> @error.ErrorMessage
+                </div>
+            }
+        </div>
+    }
+}
+else if (activeTab == "Projects")
+{
+    <h3>Проекты</h3>
+    <div class="filters">
+        <input class="search" type="text" @bind="projectSearchRequest.Search" placeholder="Поиск..." 
+               @oninput="e => OnSearchProjectInput(e.Value.ToString())" />
+        <select class="sort"
+                value="@projectSearchRequest.Sort"
+                @onchange="e => OnSortProjectChange(e.Value.ToString())">>
+            <option value="name">По названию</option>
+            <option value="trainee_count">По количеству стажеров</option>
+        </select>
+        <select class="selected" 
+                value="@projectSearchRequest.SortDirection.ToString().ToLower()"
+                @onchange="e => OnSortProjectDirectionChange(bool.Parse(e.Value.ToString()))">>
+            <option value="true">По возрастанию</option>
+            <option value="false">По убыванию</option>
+        </select>
+        <label>
+            Номер страницы:
+            <input type="number"
+                   @bind="projectSearchRequest.PageIndex"
+                   @oninput="e => OnPageProjectIndexChange(int.Parse(e.Value.ToString()))" 
+                   min="1"
+                   max="@(projects?.TotalPages ?? 1)" />
+        </label>
+
+        <label>
+            Размер страницы:
+            <input type="number"
+                   @bind="projectSearchRequest.PageSize"
+                   @oninput="e => OnPageProjectSizeChange(int.Parse(e.Value.ToString()))"
+                   min="1"
+                   max="50" /> 
+        </label>
+    </div>
+
+    <div class="pagination">
+        <button @onclick="GoToPreviousProjectPage" disabled="@(projectSearchRequest.PageIndex == 1)">Назад</button>
+        @if (projects != null)
+        {
+            @for (int i = Math.Max(1, projectSearchRequest.PageIndex - 2); i <= Math.Min(projects.TotalPages, projectSearchRequest.PageIndex + 2); i++)
+            {
+                <button @onclick="() => GoToProjectPage(i)" class="@(i == projectSearchRequest.PageIndex ? "active" : "")">@i</button>
+            }
+        }
+        <button @onclick="GoToNextProjectPage" disabled="@(projectSearchRequest.PageIndex >= projects.TotalPages)">Вперед</button>
+    </div>
+
+    <div class="pagination-info">
+        Страница @projectSearchRequest.PageIndex из @(projects?.TotalPages ?? 1)
+    </div>
+
+    @if (projects == null)
+    {
+        <p>Загрузка...</p>
+    }
+    else if (!projects.Items.Any())
+    {
+        <p>Нет данных</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Название</th>
+                <th>Количество стажеров</th>
+                <th>Действия</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var project in projects.Items)
+            {
+                <tr>
+                    <td>@project.Name</td>
+                    <td>@project.TraineeCount</td>
+                    <td>
+                        @if (project.TraineeCount > 0)
+                        {
+                            <span class="view-button"
+                                  @onclick="() => OpenTraineesModal(project.Id, project.Name)">
+                                Просмотреть стажёров
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="view-button disabled">Просмотреть стажёров</span>
+                        }
+                        <span class="edit-button" @onclick="() => OpenEditSidebar(project)">
+                            Редактировать
+                        </span>
+                        <span class="delete-button" @onclick="() => DeleteItem(project.Id, false)">
+                            Удалить
+                        </span>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        <p>@if (!string.IsNullOrEmpty(deleteErrorMessage))
+        {
+            <div class="error-message">
+                @deleteErrorMessage
+            </div>
+        }
+        </p>
+    }
+    <EditForm Model="newProject" OnValidSubmit="AddNewProjectAsync">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div>
+            <input type="text" class="mb-3" @bind="newProject.Name" placeholder="Название проекта" />
+            <ValidationMessage For="() => newProject.Name" />
+        </div>
+
+        <button type="submit">Добавить проект</button>
+    </EditForm>
+
+    @if (errorsProject != null && errorsProject.Any())
+    {
+        <div class="error-messages">
+            @foreach (var error in errorsProject)
+            {
+                <div class="error-message">
+                    <strong>@error.PropertyName:</strong> @error.ErrorMessage
+                </div>
+            }
+        </div>
+    }
+}
+
+<div class="modal @(isModalOpen ? "open" : "")">
+    <div class="modal-content">
+        <span class="close-button" @onclick="CloseModal">×</span>
+        <h4>Стажёры на "@modalTitle"</h4>
+        @if (modalTrainees == null)
+        {
+            <p>Загрузка стажёров...</p>
+        }
+        else if (!modalTrainees.Any())
+        {
+            <p>Нет стажёров</p>
+        }
+        else
+        {
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>Имя</th>
+                    <th>Фамилия</th>
+                    <th>Пол</th>
+                    <th>Email</th>
+                    <th>Телефон</th>
+                    <th>Дата рождения</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var trainee in modalTrainees)
+                {
+                    <tr>
+                        <td>@trainee.FirstName</td>
+                        <td>@trainee.LastName</td>
+                        <td>@trainee.Gender</td>
+                        <td>@trainee.Email</td>
+                        <td>@trainee.PhoneNumber</td>
+                        <td>@trainee.DateOfBirth.ToString("d")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+<div class="sidebar @(isSidebarOpen ? "" : "hidden")">
+    <div class="sidebar-header">
+        <h4>Редактирование "@editItemName"</h4>
+        <span class="sidebar-close" @onclick="CloseSidebar">×</span>
+    </div>
+    <input class="search" type="text" @bind="searchRequest.Search" placeholder="Поиск..." @bind:event="oninput" @bind:after="LoadAvailableTraineesAsync" />
+    <div class="section">
+        <h5>Доступные стажёры:</h5>
+        <ul class="trainees-list">
+            @if (availableTrainees == null)
+            {
+                <li>Загрузка...</li>
+            }
+            else if (!availableTrainees.Any())
+            {
+                <li>Нет доступных стажёров</li>
+            }
+            else
+            {
+                @foreach (var trainee in availableTrainees)
+                {
+                    <li>
+                        <label class="trainee-item">
+                            <input type="checkbox" value="@trainee.TraineeId"
+                                   @onchange="() => ToggleTraineeSelection(trainee.TraineeId)"
+                                   disabled="@trainee.IsAlreadyAdded" />
+                            <span>@trainee.FirstName @trainee.LastName (@trainee.Email)</span>
+                        </label>
+                    </li>
+                }
+            }
+        </ul>
+    </div>
+
+    <div class="actions">
+        <button class="save-button" @onclick="SaveChanges">Сохранить изменения</button>
+    </div>
+
+    <div class="section">
+        <h5>Уже добавленные стажёры:</h5>
+        <ul class="trainees-list">
+            @if (existTrainees == null || !existTrainees.Any())
+            {
+                <li>Нет добавленных стажёров</li>
+            }
+            else
+            {
+                @foreach (var trainee in existTrainees)
+                {
+                    <li>
+                        <span>@trainee.FirstName @trainee.LastName (@trainee.Email)</span>
+                    </li>
+                }
+            }
+        </ul>
+    </div>
+</div>
+
+@code {
+    private string Traineeships = "Traineeships";
+    private string Projects = "Projects";
+    private string activeTab = "Traineeships";
+    private PagedResult<TraineeshipDto>? traineeships;
+    private PagedResult<ProjectDto>? projects;
+    private PagedResult<TraineeDto>? trainees;
+    private List<TraineeDto>? existTrainees;
+    private SearchAndSortRequest searchRequest = new();
+    private ProjectDto newProject = new();
+    private TraineeshipDto newTraineeship = new();
+    private List<FormattedMessageError> errorsTraineeship = new();
+    private List<FormattedMessageError> errorsProject = new();
+    private string deleteErrorMessage = "";
+    private string selectedTraineeshipSortDirection = "true";
+    private string selectedProjectSortDirection = "true";
+    private bool isPaginationEnabled = false;
+
+    private SearchAndSortRequest traineeshipSearchRequest = new()
+    {
+        PageIndex = 1,
+        PageSize = 10,
+        Sort = "name",
+        SortDirection = true
+    };
+
+    private SearchAndSortRequest projectSearchRequest = new()
+    {
+        PageIndex = 1,
+        PageSize = 10,
+        Sort = "name",
+        SortDirection = true
+    };
+
+    private bool isModalOpen = false;
+    private string modalTitle = "";
+    private List<TraineeDto>? modalTrainees;
+
+    private bool isSidebarOpen = false;
+    private string editItemName = "";
+    private string successMessage = "";
+    private string errorMessage = "";
+    private int editItemId = 0;
+    private List<int> selectedTraineeIds = new();
+    private List<TraineeDto>? availableTrainees;
+    private bool isSubmitting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTraineeshipsAsync();
+        await LoadProjectsAsync();
+    }
+
+    protected override void OnInitialized()
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        var queryParams = QueryHelpers.ParseQuery(uri.Query);
+
+        activeTab = queryParams.ContainsKey("tab") ? queryParams["tab"] : activeTab;
+        traineeshipSearchRequest.Search = queryParams.ContainsKey("traineeshipSearch") ? queryParams["traineeshipSearch"] : traineeshipSearchRequest.Search;
+        projectSearchRequest.Search = queryParams.ContainsKey("projectSearch") ? queryParams["projectSearch"] : projectSearchRequest.Search;
+        
+        if (queryParams.ContainsKey("traineeshipPage"))
+        {
+            int.TryParse(queryParams["traineeshipPage"], out int traineeshipPage);
+            traineeshipSearchRequest.PageIndex = Math.Max(1, traineeshipPage);
+        }
+
+        if (queryParams.ContainsKey("projectPage"))
+        {
+            int.TryParse(queryParams["projectPage"], out int projectPage);
+            projectSearchRequest.PageIndex = Math.Max(1, projectPage);
+        }
+
+        if (queryParams.ContainsKey("traineeshipSize"))
+        {
+            int.TryParse(queryParams["traineeshipSize"], out int traineeshipSize);
+            traineeshipSearchRequest.PageSize = Math.Max(1, traineeshipSize);
+        }
+
+        if (queryParams.ContainsKey("projectSize"))
+        {
+            int.TryParse(queryParams["projectSize"], out int projectSize);
+            projectSearchRequest.PageSize = Math.Max(1, projectSize);
+        }
+
+        traineeshipSearchRequest.Sort = queryParams.ContainsKey("traineeshipSort") ? queryParams["traineeshipSort"] : "name";
+        projectSearchRequest.Sort = queryParams.ContainsKey("projectSort") ? queryParams["projectSort"] : "name";
+
+        if (queryParams.ContainsKey("traineeshipSortDir"))
+        {
+            bool.TryParse(queryParams["traineeshipSortDir"], out bool traineeshipSortDir);
+            traineeshipSearchRequest.SortDirection = traineeshipSortDir;
+        }
+
+        if (queryParams.ContainsKey("projectSortDir"))
+        {
+            bool.TryParse(queryParams["projectSortDir"], out bool projectSortDir);
+            projectSearchRequest.SortDirection = projectSortDir;
+        }
+        
+        LoadDataAsync();
+    }
+    
+    private void UpdateUrlAndLoadData()
+    {
+        var query = new Dictionary<string, string>();
+        query["tab"] = activeTab;
+        if (!string.IsNullOrWhiteSpace(traineeshipSearchRequest.Search))
+        {
+            query["traineeshipSearch"] = traineeshipSearchRequest.Search;
+        }
+
+        if (!string.IsNullOrWhiteSpace(projectSearchRequest.Search))
+        {
+            query["projectSearch"] = projectSearchRequest.Search;
+        }
+
+        query["traineeshipPage"] = traineeshipSearchRequest.PageIndex.ToString();
+        query["projectPage"] = projectSearchRequest.PageIndex.ToString();
+        query["traineeshipSize"] = traineeshipSearchRequest.PageSize.ToString();
+        query["projectSize"] = projectSearchRequest.PageSize.ToString();
+        query["traineeshipSort"] = traineeshipSearchRequest.Sort;
+        query["projectSort"] = projectSearchRequest.Sort;
+        query["traineeshipSortDir"] = traineeshipSearchRequest.SortDirection.ToString();
+        query["projectSortDir"] = projectSearchRequest.SortDirection.ToString();
+        NavigationManager.NavigateTo(QueryHelpers.AddQueryString("/traineeships-and-projects", query));
+    }
+    
+    private async Task OnSearchTraineeshipInput(string searchValue)
+    {
+        traineeshipSearchRequest.Search = searchValue;
+        UpdateUrlAndLoadData();
+        await LoadTraineeshipsAsync();
+    }
+    private async Task OnSearchProjectInput(string searchValue)
+    {
+        projectSearchRequest.Search = searchValue;
+        UpdateUrlAndLoadData();
+        await LoadProjectsAsync();
+    }
+
+    private async Task OnSortTraineeshipChange(string value)
+    {
+        traineeshipSearchRequest.Sort = value;
+        UpdateUrlAndLoadData();
+        await LoadTraineeshipsAsync();
+    }
+    
+    private async Task OnSortProjectChange(string value)
+    {
+        projectSearchRequest.Sort = value;
+        UpdateUrlAndLoadData();
+        await LoadProjectsAsync();
+    }
+
+
+    private async Task OnPageTraineeshipIndexChange(int value)
+    {
+        traineeshipSearchRequest.PageIndex = Math.Max(1, value);
+        UpdateUrlAndLoadData();
+        await LoadTraineeshipsAsync();
+    }
+
+    private async Task OnPageTraineeshipSizeChange(int value)
+    {
+        traineeshipSearchRequest.PageSize = Math.Max(1, value);
+        traineeshipSearchRequest.PageIndex = 1; 
+        UpdateUrlAndLoadData();
+        await LoadTraineeshipsAsync();
+    }
+    
+    private async Task OnPageProjectIndexChange(int value)
+    {
+        projectSearchRequest.PageIndex = Math.Max(1, value);
+        UpdateUrlAndLoadData();
+        await LoadProjectsAsync();
+    }
+
+    private async Task OnPageProjectSizeChange(int value)
+    {
+        projectSearchRequest.PageSize = Math.Max(1, value);
+        projectSearchRequest.PageIndex = 1; 
+        UpdateUrlAndLoadData();
+        await LoadProjectsAsync();
+    }
+    
+    private async Task OnSortTraineeshipDirectionChange(bool value)
+    {
+        traineeshipSearchRequest.SortDirection = value;
+        UpdateUrlAndLoadData();
+        await LoadTraineeshipsAsync();
+    }
+    
+    private async Task OnSortProjectDirectionChange(bool value)
+    {
+        projectSearchRequest.SortDirection = value;
+        UpdateUrlAndLoadData();
+        await LoadProjectsAsync();
+    }
+
+
+    private void SwitchTab(string tabName)
+    {
+        activeTab = tabName;
+        UpdateUrlAndLoadData();
+    }
+
+    private async Task LoadTraineeshipsAsync()
+    {
+        traineeships = await ApiService.LoadDataAsync<TraineeshipDto>("api/Traineeship", traineeshipSearchRequest);
+    }
+
+    private async Task LoadProjectsAsync()
+    {
+        projects = await ApiService.LoadDataAsync<ProjectDto>("api/Project", projectSearchRequest);
+    }
+
+    private async Task AddNewProjectAsync()
+    {
+        var (success, message, errors) = await ApiService.AddNewItemAsync("api/Project", newProject);
+
+        if (success)
+        {
+            successMessage = message;
+            errorMessage = "";
+            newProject = new();
+            await LoadProjectsAsync();
+        }
+        else
+        {
+            errorMessage = message + (errors != null ? $" ({string.Join(", ", errors)})" : "");
+            successMessage = "";
+        }
+
+        StateHasChanged();
+        await Task.Delay(3000);
+        ClearMessages();
+    }
+    
+    private async Task AddNewTraineeshipAsync()
+    {
+        var (success, message, errors) = await ApiService.AddNewItemAsync("api/Traineeship", newTraineeship);
+
+        if (success)
+        {
+            successMessage = message;
+            errorMessage = "";
+            newTraineeship = new();
+            await LoadTraineeshipsAsync();
+        }
+        else
+        {
+            errorMessage = message + (errors != null ? $" ({string.Join(", ", errors)})" : "");
+            successMessage = "";
+        }
+
+        StateHasChanged();
+        await Task.Delay(3000);
+        ClearMessages();
+    }
+    
+    private void ClearMessages()
+    {
+        successMessage = "";
+        errorMessage = "";
+        errorsProject.Clear();
+        errorsTraineeship.Clear();
+    }
+
+    private async Task OpenTraineesModal(int id, string title)
+    {
+        modalTitle = title;
+        modalTrainees = null;
+        isModalOpen = true;
+
+        try
+        {
+            var queryString = activeTab == "Traineeships"
+                ? $"api/Traineeship/{id}/trainees"
+                : $"api/Project/{id}/trainees";
+
+            modalTrainees = await Client.GetFromJsonAsync<List<TraineeDto>>(queryString);
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Ошибка подключения: {ex.Message}");
+        }
+        catch (JsonException ex)
+        {
+            Console.WriteLine($"Ошибка данных: {ex.Message}");
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task OpenEditSidebar(object item)
+    {
+        CloseSidebar();
+        if (item is TraineeshipDto traineeship && traineeship.Id > 0)
+        {
+            editItemName = traineeship.Name;
+            editItemId = traineeship.Id;
+        }
+        else if (item is ProjectDto project && project.Id > 0)
+        {
+            editItemName = project.Name;
+            editItemId = project.Id;
+        }
+        else
+        {
+            return;
+        }
+
+        if (traineeships == null)
+        {
+            await LoadTraineeshipsAsync();
+        }
+        if (projects == null)
+        {
+            await LoadProjectsAsync();
+        }
+
+        await LoadAvailableTraineesAsync();
+
+        isSidebarOpen = true;
+        StateHasChanged();
+    }
+    
+    private async Task LoadAvailableTraineesAsync()
+    {
+        try
+        {
+            var queryString = $"api/Trainees?PageSize=9999" +
+                              $"&Search={Uri.EscapeDataString(searchRequest.Search)}";
+            trainees = await Client.GetFromJsonAsync<PagedResult<TraineeDto>>(queryString);
+
+            if (trainees?.Items == null || !trainees.Items.Any())
+            {
+                availableTrainees = new List<TraineeDto>();
+                return;
+            }
+            await GetTraineeExist(editItemId, activeTab == "Traineeships");
+            var existTraineeIds = existTrainees?.Select(et => et.TraineeId).ToHashSet();
+            foreach (var trainee in trainees.Items)
+            {
+                trainee.IsAlreadyAdded = existTraineeIds != null && existTraineeIds.Contains(trainee.TraineeId);
+            }
+
+            availableTrainees = trainees.Items.Where(t => !t.IsAlreadyAdded).ToList();
+
+        }
+        catch (JsonException ex)
+        {
+            Console.WriteLine($"Ошибка десериализации: {ex.Message}");
+            availableTrainees = new List<TraineeDto>();
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Ошибка подключения: {ex.Message}");
+            availableTrainees = new List<TraineeDto>();
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private void CloseSidebar()
+    {
+        isSidebarOpen = false;
+        editItemName = "";
+        editItemId = 0;
+        selectedTraineeIds.Clear();
+        availableTrainees = null;
+        existTrainees = null;
+        StateHasChanged();
+    }
+
+    private void CloseModal()
+    {
+        isModalOpen = false;
+        modalTrainees = null;
+        StateHasChanged();
+    }
+
+    private void ToggleTraineeSelection(int traineeId)
+    {
+        if (selectedTraineeIds.Contains(traineeId))
+        {
+            selectedTraineeIds.Remove(traineeId);
+        }
+        else
+        {
+            selectedTraineeIds.Add(traineeId);
+        }
+    }
+
+    private async Task SaveChanges()
+    {
+        if (!isSidebarOpen || editItemId <= 0) return;
+
+        try
+        {
+            await ApiService.SaveChangesAsync(editItemId, activeTab == "Traineeships", selectedTraineeIds);
+            await LoadDataAsync();
+            CloseSidebar();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка при сохранении изменений: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteItem(int id, bool isTraineeship)
+    {
+        var (success, errorMessage) = await ApiService.DeleteItemAsync(id, isTraineeship);
+
+        if (success)
+        {
+            await LoadDataAsync(); 
+        }
+        else
+        {
+            deleteErrorMessage = errorMessage; 
+        }
+
+        StateHasChanged();
+
+        try
+        {
+            await Task.Delay(3000); 
+        }
+        finally
+        {
+            deleteErrorMessage = "";
+            StateHasChanged();
+        }
+    }
+
+    private async Task GetTraineeExist(int id, bool isTraineeship)
+    {
+        existTrainees = await ApiService.GetTraineeExist(editItemId, activeTab == "Traineeships");
+        StateHasChanged();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        if (activeTab == "Traineeships")
+        {
+            await LoadTraineeshipsAsync();
+        }
+        else if (activeTab == "Projects")
+        {
+            await LoadProjectsAsync();
+        }
+    }
+
+    private async Task GoToTraineeshipPage(int page)
+    {
+        if (page < 1 || (traineeships != null && page > traineeships.TotalPages))
+        {
+            return;
+        }
+        traineeshipSearchRequest.PageIndex = page;
+        await LoadTraineeshipsAsync();
+    }
+
+    private async Task GoToPreviousTraineeshipPage()
+    {
+        if (traineeshipSearchRequest.PageIndex > 1)
+        {
+            traineeshipSearchRequest.PageIndex--;
+            await LoadTraineeshipsAsync();
+        }
+    }
+
+    private async Task GoToNextTraineeshipPage()
+    {
+        if (traineeships != null && traineeshipSearchRequest.PageIndex < traineeships.TotalPages)
+        {
+            traineeshipSearchRequest.PageIndex++;
+            await LoadTraineeshipsAsync();
+        }
+    }
+
+    private async Task GoToProjectPage(int page)
+    {
+        if (page < 1 || (projects != null && page > projects.TotalPages))
+        {
+            return;
+        }
+        projectSearchRequest.PageIndex = page;
+        await LoadProjectsAsync();
+    }
+
+    private async Task GoToPreviousProjectPage()
+    {
+        if (projectSearchRequest.PageIndex > 1)
+        {
+            projectSearchRequest.PageIndex--;
+            await LoadProjectsAsync();
+        }
+    }
+
+    private async Task GoToNextProjectPage()
+    {
+        if (projects != null && projectSearchRequest.PageIndex < projects.TotalPages)
+        {
+            projectSearchRequest.PageIndex++;
+            await LoadProjectsAsync();
+        }
+    }
+}

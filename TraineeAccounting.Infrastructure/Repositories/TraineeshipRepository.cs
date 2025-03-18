@@ -115,4 +115,13 @@ public class TraineeshipRepository : ITraineeshipRepository
         await _context.SaveChangesAsync();
         return true;
     }
+
+    public async Task<List<Trainee>> GetTraineesByTraineeshipAsync(int traineeshipId)
+    {
+        return await _context.Trainees
+            .Where(t => t.TraineeshipId == traineeshipId)
+            .Include(t => t.Traineeship)
+            .Include(t=> t.Project)
+            .ToListAsync();
+    }
 }

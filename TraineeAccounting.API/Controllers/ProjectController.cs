@@ -36,6 +36,13 @@ public class ProjectController : ControllerBase
     //     var projects = await _projectRepository.GetAllAsync();
     //     return Ok(projects.Select(x => new ProjectDto { Id = x.ProjectId, Name = x.Name }));
     // }
+    [HttpGet("{projectId}/trainees")]
+    public async Task<ActionResult<List<TraineeDto>>> GetTraineesByProject(int projectId)
+    {
+        var result = await _mediator.Send(new GetTraineesByProjectCommand { ProjectId = projectId });
+        if (result == null || !result.Any()) return NotFound();
+        return Ok(result);
+    }
     
     [HttpGet]
     public async Task<ActionResult<ProjectDto>> GetProjects([FromQuery] SearchAndSortRequest request, CancellationToken cancellationToken)

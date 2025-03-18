@@ -112,4 +112,13 @@ public class ProjectRepository : IProjectRepository
             return false;
         }
     }
+
+    public async Task<List<Trainee>> GetTraineesByProjectAsync(int projectId)
+    {
+        return await _context.Trainees
+            .Where(t => t.Project.ProjectId == projectId)
+            .Include(t => t.Project)
+            .Include(t => t.Traineeship)
+            .ToListAsync();
+    }
 }

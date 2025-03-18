@@ -17,7 +17,7 @@ public class CreateTraineeshipHandler : IRequestHandler<CreateTraineeshipCommand
 
     public async Task<int> Handle(CreateTraineeshipCommand request, CancellationToken cancellationToken)
     {
-        var traineeshipName = request.TraineeshipName;
+        var traineeshipName = request.Name;
         var existingTraineeship = await _traineeshipRepository.GetByNameAsync(traineeshipName);
         if (existingTraineeship != null)
         {

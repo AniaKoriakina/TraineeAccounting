@@ -13,4 +13,5 @@ public interface IProjectRepository
     Task<bool> UpdateTraineesProjectAsync(int projectId, List<int> traineesIds);
     Task<int> GetTraineesCountAsync(int traineesId);
     Task<PagedResult<Project>> GetPaginatedAsync(SearchAndSortRequest request, CancellationToken cancellationToken);
+    Task<List<Trainee>> GetTraineesByProjectAsync(int projectId); 
 }

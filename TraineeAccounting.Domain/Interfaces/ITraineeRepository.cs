@@ -16,6 +16,9 @@ public interface ITraineeRepository
     Task<bool> IsEmailExistsAsync(string email);
     
     Task<bool> IsPhoneNumberExistAsync(string phone);
+    
+    Task<bool> IsEmailUnique(int traineeId, string email);
+    Task<bool> IsPhoneNumberUnique(int traineeId, string? phoneNumber);
     Task<bool> AreTraineesExist(List<int> traineeIds);
     Task<PagedResult<Trainee>> GetPaginatedAsync(SearchAndSortRequest request, CancellationToken cancellationToken);
 }

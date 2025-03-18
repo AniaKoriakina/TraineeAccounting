@@ -44,6 +44,14 @@ public class TraineeshipController : ControllerBase
         return traineeshipId;
     }
 
+    [HttpGet("{traineeshipId}/trainees")]
+    public async Task<ActionResult<List<TraineeDto>>> GetTraineesByTraineeship(int traineeshipId)
+    {
+        var result = await _mediator.Send(new GetTraineesByTraineeshipCommand { TraineeshipId = traineeshipId });
+        if (result == null || !result.Any()) return NotFound();
+        return Ok(result);
+    }
+
     [HttpGet]
     public async Task<ActionResult<TraineeshipDto>> GetTraineeships([FromQuery] SearchAndSortRequest request, CancellationToken cancellationToken)
     {

@@ -13,4 +13,5 @@ public interface ITraineeshipRepository
     Task<bool> UpdateTraineesTraineeshipAsync(int traineeshipId, List<int> traineesIds);
     Task<bool> DeleteAsync(Traineeship traineeship);
     Task<PagedResult<Traineeship>> GetPaginatedAsync(SearchAndSortRequest request, CancellationToken cancellationToken);
+    Task<List<Trainee>> GetTraineesByTraineeshipAsync(int traineeshipId);
 }

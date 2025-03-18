@@ -41,6 +41,15 @@ public class TraineeRepository : ITraineeRepository
             case "lastname":
                 query = request.SortDirection ? query.OrderBy(t => t.LastName) : query.OrderByDescending(t => t.LastName);
                 break;
+            case "email":
+                query = request.SortDirection ? query.OrderBy(t => t.Email) : query.OrderByDescending(t => t.Email);
+                break;
+            case "traineeshipname":
+                query = request.SortDirection ? query.OrderBy(t => t.Traineeship.Name) : query.OrderByDescending(t => t.Traineeship.Name);
+                break;
+            case "projectname":
+                query = request.SortDirection ? query.OrderBy(t => t.Project.Name) : query.OrderByDescending(t => t.Project.Name);
+                break;
             default:
                 query = query.OrderBy(t => t.LastName);
                 break;
@@ -80,6 +89,25 @@ public class TraineeRepository : ITraineeRepository
     public async Task<bool> IsPhoneNumberExistAsync(string phoneNumber)
     {
         return await _context.Trainees.AnyAsync(t => t.PhoneNumber == phoneNumber);
+    }
+    
+    public async Task<bool> IsEmailUnique(int traineeId, string email)
+    {
+        return await _context.Trainees
+            .Where(t => t.Email == email && t.Id != traineeId)
+            .AnyAsync() == false;
+    }
+
+    public async Task<bool> IsPhoneNumberUnique(int traineeId, string? phoneNumber)
+    {
+        if (string.IsNullOrEmpty(phoneNumber))
+        {
+            return true; 
+        }
+
+        return await _context.Trainees
+            .Where(t => t.PhoneNumber == phoneNumber && t.Id != traineeId)
+            .AnyAsync() == false;
     }
 
     public async Task AddAsync(Trainee trainee)

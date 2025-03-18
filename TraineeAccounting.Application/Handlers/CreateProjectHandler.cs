@@ -16,7 +16,7 @@ public class CreateProjectHandler : IRequestHandler<CreateProjectCommand, int>
 
     public async Task<int> Handle(CreateProjectCommand request, CancellationToken cancellationToken)
     {
-        var projectName = request.ProjectName;
+        var projectName = request.Name;
         var existingProject = await _projectRepository.GetByNameAsync(projectName);
         if (existingProject != null)
         {

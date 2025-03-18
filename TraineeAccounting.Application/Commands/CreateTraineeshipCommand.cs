@@ -6,5 +6,5 @@ namespace TraineeAccounting.Application.Commands;
 public class CreateTraineeshipCommand : IRequest<int>
 {
     public int TraineeshipId { get; set; }
-    public string TraineeshipName { get; set; }
+    public string Name { get; set; }
 }

@@ -11,9 +11,7 @@ public class UpdateTraineeValidator : AbstractValidator<UpdateTraineeCommand>
     public UpdateTraineeValidator(ITraineeRepository traineeRepository)
     {
         _traineeRepository = traineeRepository;
-        RuleFor(x => x.TraineeId)
-            .GreaterThan(0)
-            .WithMessage("ID стажера должен быть больше 0");
+
         RuleFor(x => x.FirstName)
             .NotEmpty()
             .When(x => !string.IsNullOrEmpty(x.FirstName))
@@ -32,13 +30,16 @@ public class UpdateTraineeValidator : AbstractValidator<UpdateTraineeCommand>
             .When(x => !string.IsNullOrEmpty(x.Email))
             .WithMessage("Укажите корректный email");
         RuleFor(x => x.Email)
-            .MustAsync(async (email, ct) =>
-                string.IsNullOrEmpty(email) || await _traineeRepository.IsEmailExistsAsync(email))
+            .NotEmpty()
+            .EmailAddress()
+            .MustAsync(async (command, email, ct) =>
+                await _traineeRepository.IsEmailUnique(command.TraineeId, email))
             .WithMessage("Этот email уже используется");
         RuleFor(x => x.PhoneNumber)
             .Matches(new Regex(@"^\+7\d{10}$")).WithMessage("Требуется действительный номер телефона")
-            .MustAsync(async (phone, ct) =>
-                string.IsNullOrEmpty(phone) || await _traineeRepository.IsEmailExistsAsync(phone))
+            .When(x => !string.IsNullOrEmpty(x.PhoneNumber))
+            .MustAsync(async (command, phoneNumber, ct) =>
+                await _traineeRepository.IsPhoneNumberUnique(command.TraineeId, phoneNumber))
             .WithMessage("Этот номер телефона уже используется");
     }
     

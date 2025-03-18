@@ -37,7 +37,10 @@ public class CreateTraineeValidator : AbstractValidator<CreateTraineeCommand>
             .MustAsync(BeUniqueEmail).WithMessage("Email адрес уже существует");
         RuleFor(x => x.PhoneNumber)
             .Matches(new Regex(@"^\+7\d{10}$")).WithMessage("Требуется действительный номер телефона")
-            .MustAsync(BeUniquePhone).WithMessage("Номер телефона уже существует");
+            .When(x => !string.IsNullOrEmpty(x.PhoneNumber))
+            .MustAsync(async (command, phoneNumber, ct) =>
+                await _traineeRepository.IsPhoneNumberUnique(command.TraineeId, phoneNumber))
+            .WithMessage("Этот номер телефона уже используется");
     }
     
     private async Task<bool> BeUniqueEmail(string email, CancellationToken cancellationToken)

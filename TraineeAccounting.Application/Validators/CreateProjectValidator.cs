@@ -12,7 +12,7 @@ public class CreateProjectValidator : AbstractValidator<CreateProjectCommand>
     {
         _projectRepository = projectRepository;
         
-        RuleFor(x => x.ProjectName)
+        RuleFor(x => x.Name)
             .NotNull().WithMessage("Название проекта обязательно для заполнения")
             .NotEmpty().WithMessage("Название проекта не может быть пустым")
             .MustAsync(async (name, cancellationToken) => 

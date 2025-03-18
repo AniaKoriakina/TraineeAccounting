@@ -13,7 +13,7 @@ public class CreateTraineeshipValidator : AbstractValidator<CreateTraineeshipCom
     {
         _repository = repository;
 
-        RuleFor(x => x.TraineeshipName)
+        RuleFor(x => x.Name)
             .NotNull().WithMessage("Название стажировки обязательно для заполнения")
             .NotEmpty().WithMessage("Название стажировки не может быть пустым")
             .MustAsync(async (name, cancellationToken) => 

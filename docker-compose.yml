@@ -1,13 +1,43 @@
 version: '3'
 services:
   postgres:
-    image: postgres:15
+    image: postgres:16
     container_name: trainee_dev
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 7825
       POSTGRES_DB: trainee
     volumes:
-      - C:\wiki\data:/var/lib/postgresql/data
+      - ./dump/trainee_backup.sql:/docker-entrypoint-initdb.d/trainee_backup.sql
     ports:
       - "5432:5432"
+    networks:
+      - trainee-network
+  api:
+    build:
+      context: .
+      dockerfile: ./TraineeAccounting.API/Dockerfile
+    container_name: trainee_api
+    depends_on:
+      - postgres
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - CONNECTION_STRING=Host=postgres;Port=5432;Database=trainee;Username=postgres;Password=7825;
+    ports:
+      - "5191:8080" 
+    networks:
+      - trainee-network
+
+  client:
+    build:
+      context: ./TraineeAccounting.Client
+      dockerfile: Dockerfile
+    container_name: trainee_client
+    ports:
+      - "5229:80" 
+    networks:
+      - trainee-network
+
+networks:
+  trainee-network:
+    driver: bridge
